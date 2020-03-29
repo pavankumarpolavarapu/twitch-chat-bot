@@ -5,6 +5,7 @@ from typing import NoReturn
 import argparse
 import json
 import re
+import datetime
 
 HOST = 'irc.chat.twitch.tv'
 PORT = 6697
@@ -27,6 +28,10 @@ class Config(NamedTuple):
 				f')'
 		)
 
+def dt_str() -> str:
+	dt_now = datetime.datetime.now()
+	return f'[{dt_now.hour:02}:{dt_now.minute:02}]'
+
 async def asyncmain(config: Config, *, quiet: bool) -> NoReturn:
 	reader, writer = await asyncio.open_connection(HOST, PORT, ssl=True)
 
@@ -37,7 +42,11 @@ async def asyncmain(config: Config, *, quiet: bool) -> NoReturn:
 	while True:
 		data = await recv(reader, quiet=quiet)
 		msg = data.decode('UTF-8', errors='backslashreplace')
-		print(msg)
+	
+		match = MSG_RE.match(msg)
+
+		if match:
+			print(f'{dt_str()}<{match[1]}> {match[2]}')
 
 async def send(
 		writer: asyncio.StreamWriter,
@@ -56,7 +65,6 @@ async def recv(
 		quiet: bool = False,
 )-> bytes:
 	data = await reader.readline()
-	print(data)	
 	if not quiet:
 		sys.stderr.buffer.write(b'> ')
 		sys.stderr.buffer.write(data)
